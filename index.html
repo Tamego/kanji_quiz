@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>漢字</title>
+    <meta charset="UTF-8">
+    <script src="https://code.jquery.com/jquery-git.js"></script>
+  </head>
+  <body>
+    <h1>漢字</h1>
+    <p id="question">問題がここに表示されます。</p>
+    <canvas id="canvas" width="800" height="200", style="background-color: #eeeeee;">
+      キャンバス
+    </canvas>
+    <div>
+      <button id="erase", onclick="erase()">消去</button>
+      <button id="attack", onclick="attack()">決定</button>
+    </div>
+    <p id="suggest">候補がここに表示されます。</p>
+    <button id="answerbutton" onclick="showanswer()">解答を表示</button>
+    <p id="answer">解答がここに表示されます。</p>
+    <input id="questionlist" type="file" name="questionlist", accept=".json">
+    <script>
+      var text = {
+        'app_version': 0.4,
+        'api_level': '537.36',
+        'device': window.navigator.userAgent,
+        'input_type': 0,
+        'options': 'enable_pre_space',
+        'requests': [{
+          'writing_guide': {
+            'writing_area_width': 200,  //キャンバス幅
+            'writing_area_height': 200, //キャンバス高さ
+          },
+          'pre_context': '',
+          'max_num_results': 1,
+          'max_completions': 0,
+          'ink': []
+        }]
+      };
+
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      const suggestP = document.getElementById("suggest");
+      const fileInput = document.getElementById("questionlist");
+      const problem = document.getElementById("question");
+      const answer = document.getElementById("answer");
+
+      let suggest = [];
+
+      let d = new Date();
+      let last = 0;
+      let pathx = [];
+      let pathy = [];
+
+      let isDrawing = false;
+      let x = 0;
+      let y = 0;
+      // PC
+      canvas.addEventListener('mousedown', startPoint, false);
+      canvas.addEventListener('mousemove', movePoint, false);
+      canvas.addEventListener('mouseup', endPoint, false);
+      // スマホ
+      canvas.addEventListener('touchstart', startPoint, false);
+      canvas.addEventListener('touchmove', movePoint, false);
+      canvas.addEventListener('touchend', endPoint, false);
+
+      function startPoint(e){
+        x = e.offsetX;
+        y = e.offsetY;
+        last = d.getTime();
+        isDrawing = true;
+      }
+
+      function movePoint(e){
+        if (isDrawing) {
+          pathx.push(x);
+          pathy.push(y);
+          drawLine(ctx, x, y, e.offsetX, e.offsetY, last);
+          x = e.offsetX;
+          y = e.offsetY;
+          last = d.getTime();
+        }
+      }
+
+      function endPoint(e){
+        if (isDrawing) {
+          pathx.push(x);
+          pathy.push(y);
+          drawLine(ctx, x, y, e.offsetX, e.offsetY);
+          text.requests[0].ink.push([pathx, pathy, [0, 0]]);
+          convertToKanji();
+          pathx = [];
+          pathy = [];
+          isDrawing = false;
+        }
+      }
+
+      function convertToKanji(){
+        $.ajax({
+          url: 'https://inputtools.google.com/request?itc=ja-t-i0-handwrit&amp;app=demopage',
+          method: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify(text),
+          dataType: 'json',
+        }).done(function (json) {
+          suggest = json[1][0][1];
+          suggestP.textContent = suggest;
+        });
+      }
+
+      function drawLine(ctx, x1, y1, x2, y2, l) {
+        ctx.beginPath();
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 2;
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.closePath();
+      }
+
+      const reader = new FileReader();
+      let questions = [];
+
+      fileInput.addEventListener("change", handleFileSelect);
+      function handleFileSelect() {
+        reader.readAsText(fileInput.files[0]);
+        reader.onload = function() {
+          console.log(JSON.parse(reader.result));
+          questions = JSON.parse(reader.result);
+          nextQuestion();
+        }
+      }
+
+      let currentquestion = [];
+      function nextQuestion() {
+        currentquestion = questions[Math.floor(Math.random() * questions.length)];
+        console.log(currentquestion);
+        problem.innerHTML = currentquestion[0].replace(
+          "\#", 
+          "<strong>" + currentquestion[1] + "</strong>");
+      }
+
+      function attack() {
+        var set = new Set(suggest);
+        if (set.has(currentquestion[2])) {
+          answer.textContent = "正解";
+          nextQuestion();
+        }
+        else {
+          answer.textContent = "不正解";
+        }
+        erase();
+      }
+
+      function erase() {
+        ctx.clearRect(0, 0, ctx.canvas.clientWidth, ctx.canvas.clientHeight);
+        pathx = [];
+        pathy = [];
+        text.requests[0].ink = [];
+      }
+
+      function showanswer() {
+        answer.textContent = currentquestion[2];
+      }
+    </script>
+  </body>
+</html>
