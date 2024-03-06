@@ -8,7 +8,7 @@
   <body>
     <h1>漢字</h1>
     <p id="question">問題がここに表示されます。</p>
-    <canvas id="canvas" width="800" height="200", style="background-color: #eeeeee;">
+    <canvas id="canvas" width="800" height="200"  style="background-color: #eeeeee; touch-action: pinch-zoom;">
       キャンバス
     </canvas>
     <div>
@@ -64,9 +64,21 @@
       canvas.addEventListener('touchmove', movePoint, false);
       canvas.addEventListener('touchend', endPoint, false);
 
+      function getOffsetX(e) {
+        var left = e.target.getBoundingClientRect().left;
+        if(e.clientX) return e.clientX -  left;
+        else return e.touches[0].clientX - left;
+      }
+
+      function getOffsetY(e) {
+        var top = e.target.getBoundingClientRect().top;
+        if(e.clientX) return e.clientY -  top;
+        else return e.touches[0].clientY - top;
+      }
+
       function startPoint(e){
-        x = e.offsetX;
-        y = e.offsetY;
+        x = getOffsetX(e);
+        y = getOffsetY(e);
         last = d.getTime();
         isDrawing = true;
       }
@@ -75,9 +87,9 @@
         if (isDrawing) {
           pathx.push(x);
           pathy.push(y);
-          drawLine(ctx, x, y, e.offsetX, e.offsetY, last);
-          x = e.offsetX;
-          y = e.offsetY;
+          drawLine(ctx, x, y, getOffsetX(e), getOffsetY(e), last);
+          x = getOffsetX(e);
+          y = getOffsetY(e);
           last = d.getTime();
         }
       }
@@ -86,7 +98,6 @@
         if (isDrawing) {
           pathx.push(x);
           pathy.push(y);
-          drawLine(ctx, x, y, e.offsetX, e.offsetY);
           text.requests[0].ink.push([pathx, pathy, [0, 0]]);
           convertToKanji();
           pathx = [];
